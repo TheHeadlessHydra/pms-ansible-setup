@@ -5,7 +5,10 @@
     nas_mount_location: /mnt/headlessNAS
     plex_directory: /srv/plex
   tasks:
-
+    # include other var files
+    - name: include secrets file
+      include_vars: secrets.yml
+   
     # Install pre-requisite libraries
     - name: install docker
       apt:
@@ -37,3 +40,17 @@
         path: '{{ plex_directory }}'
         state: directory
         mode: 0755
+    - name: create environment variable file
+      file:
+        path: /etc/profile.d/plex_variables.sh
+        state: touch
+    - name: put plex claim in environment variable
+      lineinfile:
+        dest: /etc/profile.d/plex_variables.sh
+        state: present
+        line: 'PLEX_CLAIM={{ plex_claim }}'
+    - name: put mount location in environment variable
+      lineinfile:
+        dest: /etc/profile.d/plex_variables.sh
+        state: present
+        line: 'PLEX_MNT_LOCATION={{ nas_mount_location }}'

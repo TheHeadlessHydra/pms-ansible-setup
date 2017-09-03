@@ -1,0 +1,16 @@
+version: '2'
+services:
+  plex:
+    privileged: true
+    container_name: plex
+    image: plexinc/pms-docker
+    restart: unless-stopped
+    environment:
+      - TZ=US
+      - PLEX_CLAIM="${PLEX_CLAIM}"
+    network_mode: host
+    volumes:
+      - /srv/plex/config:/config
+      - /srv/plex/transcode:/transcode
+      - /srv/plex/data:/data
+      - "${PLEX_MNT_LOCATION}:${PLEX_MNT_LOCATION}"
