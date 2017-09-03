@@ -4,6 +4,18 @@
     nas_name: HeadlessNAS
     nas_mount_location: /mnt/headlessNAS
     plex_directory: /srv/plex
+
+    docker_compose_file_location_local: "{{ playbook_dir}}/../docker/pms/docker-compose.yml"
+
+    environment_file_location: "/etc/profile.d/plex_variables.sh"
+    
+    plex_startup_script: plex_server
+    plex_startup_script_local_location: "{{ playbook_dir }}/../systemd/{{ plex_startup_script }}"
+    plex_startup_script_bin_location: "/usr/local/bin/{{ plex_startup_script }}"
+    
+    systemd_file_location_local: "{{ playbook_dir  }}/../systemd/plex_server.service"
+    systemd_file_location: "/etc/systemd/system/plex_server.service"
+
   tasks:
     # include other var files
     - name: include secrets file
@@ -42,15 +54,34 @@
         mode: 0755
     - name: create environment variable file
       file:
-        path: /etc/profile.d/plex_variables.sh
+        path: "{{ environment_file_location }}"
         state: touch
     - name: put plex claim in environment variable
       lineinfile:
-        dest: /etc/profile.d/plex_variables.sh
+        dest: "{{ environment_file_location }}"
         state: present
         line: 'PLEX_CLAIM={{ plex_claim }}'
     - name: put mount location in environment variable
       lineinfile:
-        dest: /etc/profile.d/plex_variables.sh
+        dest: "{{ environment_file_location }}"
         state: present
         line: 'PLEX_MNT_LOCATION={{ nas_mount_location }}'
+    - name: put docker compose file location in environment variable for use with plex_server startup script
+      lineinfile:
+        dest: "{{ environment_file_location }}"
+        state: present
+        line: 'PLEX_DOCKER_COMPOSE_LOC={{ docker_compose_file_location_local }}'
+    - name: copy startup script file to local/bin
+      copy:
+        src: "{{ plex_startup_script_local_location }}"
+        dest: "{{ plex_startup_script_bin_location }}"
+        owner: root
+        group: root
+        mode: 0555
+    - name: copy systemd script to systemd location
+      copy:
+        src: "{{ systemd_file_location_local }}"
+        dest: "{{ systemd_file_location }}"
+        owner: root
+        group: root
+        mode: 0555

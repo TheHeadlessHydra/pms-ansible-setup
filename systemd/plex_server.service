@@ -1,0 +1,12 @@
+[Unit]
+Description=Job that runs the plex server
+
+[Service]
+Type=simple
+Restart=on-failure
+EnvironmentFile=/etc/profile.d/plex_variables.sh
+ExecStart=/usr/local/bin/plex_server start
+ExecStop=/usr/local/bin/plex_server stop
+
+[Install]
+WantedBy=multi-user.target

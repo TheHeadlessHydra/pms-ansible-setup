@@ -1,10 +1,10 @@
 version: '2'
 services:
   plex:
+    restart: unless-stopped
     privileged: true
     container_name: plex
     image: plexinc/pms-docker
-    restart: unless-stopped
     environment:
       - TZ=US
       - PLEX_CLAIM="${PLEX_CLAIM}"

@@ -1,0 +1,38 @@
+#!/bin/bash
+
+function usage {
+    echo "usage: plex_server [start, stop, restart]"
+}
+
+function start_service {
+    docker-compose -f ${PLEX_DOCKER_COMPOSE_LOC} up
+}
+
+function stop_service {
+    docker-compose -f ${PLEX_DOCKER_COMPOSE_LOC} down
+}
+
+function restart_service {
+    docker-compose -f ${PLEX_DOCKER_COMPOSE_LOC} restart
+}
+
+
+if [ "$#" -ne 1 ]; then
+    usage
+fi
+
+case $1 in
+    start)
+	start_service
+	;;
+    stop)
+	stop_service
+	;;
+    restart)
+	restart_service
+	;;
+    *)
+	# unknown option
+	usage
+	;;
+esac
