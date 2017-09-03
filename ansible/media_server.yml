@@ -1,0 +1,39 @@
+---
+- hosts: all
+  vars:
+    nas_name: HeadlessNAS
+    nas_mount_location: /mnt/headlessNAS
+    plex_directory: /srv/plex
+  tasks:
+
+    # Install pre-requisite libraries
+    - name: install docker
+      apt:
+        name: docker
+        state: present
+    - name: install docker-compose
+      apt:
+        name: docker-compose
+        state: present
+    - name: install cifs-utils (for mounting NAS)
+      apt:
+        name: cifs-utils
+        state: present
+    - name: install avahi (gives ability to reference NAS via friendly name)
+      apt:
+        name: avahi-daemon
+        state: present
+
+    # Mount the NAS
+    - name: Mount NAS using 
+      lineinfile:
+        dest: /etc/fstab
+        state: present
+        line: '//{{ nas_name }}.local/Public {{ nas_mount_location }} cifs rw,guest,uid=1000,iocharset=utf8 0 0'
+
+    # Set up required plex
+    - name: make plex directory
+      file:
+        path: '{{ plex_directory }}'
+        state: directory
+        mode: 0755
