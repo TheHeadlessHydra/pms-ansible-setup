@@ -4,13 +4,17 @@
     nas_name: HeadlessNAS
     nas_mount_location: /mnt/headlessNAS
     plex_directory: /srv/plex
+    sabnzbd_directory: /srv/sabnzbd
+    sonarr_directory: /srv/sonarr
 
-    docker_compose_file_location_local: "{{ playbook_dir}}/../docker/pms/docker-compose.yml"
+    docker_compose_file_location_local: "{{ playbook_dir}}/../docker/docker-compose.yml"
 
-    environment_file_location: "/etc/profile.d/plex_variables.sh"
-    
+    # The below environment file location is hardcoded in the systemd script
+    environment_file_location: "/etc/environment"
+
     plex_startup_script: plex_server
     plex_startup_script_local_location: "{{ playbook_dir }}/../systemd/{{ plex_startup_script }}"
+    # The below script location is hardcoded in the systemd script
     plex_startup_script_bin_location: "/usr/local/bin/{{ plex_startup_script }}"
     
     systemd_file_location_local: "{{ playbook_dir  }}/../systemd/plex_server.service"
@@ -52,6 +56,8 @@
         path: '{{ plex_directory }}'
         state: directory
         mode: 0755
+        owner: root
+        group: root
     - name: create environment variable file
       file:
         path: "{{ environment_file_location }}"
@@ -66,6 +72,11 @@
         dest: "{{ environment_file_location }}"
         state: present
         line: 'PLEX_MNT_LOCATION={{ nas_mount_location }}'
+    - name: put plex directory location in environment variable
+      lineinfile:
+        dest: "{{ environment_file_location }}"
+        state: present
+        line: 'PLEX_DIRECTORY={{ plex_directory }}'
     - name: put docker compose file location in environment variable for use with plex_server startup script
       lineinfile:
         dest: "{{ environment_file_location }}"
@@ -85,3 +96,42 @@
         owner: root
         group: root
         mode: 0555
+
+    # Set up sonarr
+    - name: make sonarr directory
+      file:
+        path: '{{ sonarr_directory }}'
+        state: directory
+        mode: 666
+        owner: root
+        group: root
+    - name: put sonarr directory location in environment variable
+      lineinfile:
+        dest: "{{ environment_file_location }}"
+        state: present
+        line: 'SONARR_DIRECTORY={{ sonarr_directory }}'
+
+    # Set up sabnzbd
+    - name: make sabnzdb group
+      group:
+        name: sabnzbd
+        state: present
+        gid: 666
+    - name: make sabnzdb user
+      user:
+        name: sabnzbd
+        state: present
+        uid: 666
+        group: 666
+    - name: make sab directory
+      file:
+        path: '{{ sabnzbd_directory }}'
+        state: directory
+        owner: 666
+        group: 666
+        mode: 0755
+    - name: put sab directory location in environment variable
+      lineinfile:
+        dest: "{{ environment_file_location }}"
+        state: present
+        line: 'SABNZBD_DIRECTORY={{ sabnzbd_directory }}'

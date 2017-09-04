@@ -4,7 +4,7 @@ Description=Job that runs the plex server
 [Service]
 Type=simple
 Restart=on-failure
-EnvironmentFile=/etc/profile.d/plex_variables.sh
+EnvironmentFile=/etc/environment
 ExecStart=/usr/local/bin/plex_server start
 ExecStop=/usr/local/bin/plex_server stop
 
