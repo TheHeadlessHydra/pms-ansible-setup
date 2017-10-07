@@ -3,6 +3,8 @@
   vars:
     seedbox_ip: 81.4.103.77
     seedbox_key: /home/headless/.ssh/hydra_seedbox
+    seedbox_download_dir_remote: /var/lib/transmission-daemon/downloads
+    seedbox_download_dir_mount: /mnt/seedbox/downloads
     
     nas_name: HeadlessNAS
     nas_mount_location: /mnt/headlessNAS
@@ -60,7 +62,7 @@
 #        state: mounted
 
     - name: Mount downloads directory of seedbox via sshfs
-      shell: "sshfs root@{{ seedbox_ip }}:/var/lib/transmission-daemon/downloads /mnt/seedbox/downloads -o reconnect,allow_other,idmap=user,IdentityFile={{ seedbox_key  }}"
+      shell: "sshfs root@{{ seedbox_ip }}:{{ seedbox_download_dir_remote }} {{ seedbox_download_dir_mount }} -o reconnect,allow_other,idmap=user,IdentityFile={{ seedbox_key }}"
 
     - name: mount the NAS
       mount:
@@ -80,7 +82,7 @@
     #- name: Finalize mount of fstab
     #  shell: "mount -a"
 
-    # Set up required plex
+    # Set up required plex files and directories
     - name: make plex directory
       file:
         path: '{{ plex_directory }}'
@@ -88,30 +90,6 @@
         mode: 0755
         owner: root
         group: root
-    - name: create environment variable file
-      file:
-        path: "{{ environment_file_location }}"
-        state: touch
-    - name: put plex claim in environment variable
-      lineinfile:
-        dest: "{{ environment_file_location }}"
-        state: present
-        line: 'PLEX_CLAIM={{ plex_claim }}'
-    - name: put mount location in environment variable
-      lineinfile:
-        dest: "{{ environment_file_location }}"
-        state: present
-        line: 'PLEX_MNT_LOCATION={{ nas_mount_location }}'
-    - name: put plex directory location in environment variable
-      lineinfile:
-        dest: "{{ environment_file_location }}"
-        state: present
-        line: 'PLEX_DIRECTORY={{ plex_directory }}'
-    - name: put docker compose file location in environment variable for use with plex_server startup script
-      lineinfile:
-        dest: "{{ environment_file_location }}"
-        state: present
-        line: 'PLEX_DOCKER_COMPOSE_LOC={{ docker_compose_file_location_local }}'
     - name: copy startup script file to local/bin
       copy:
         src: "{{ plex_startup_script_local_location }}"
@@ -135,11 +113,43 @@
         mode: 666
         owner: root
         group: root
-    - name: put sonarr directory location in environment variable
+
+    ### Set up environment variables
+    - name: create environment variable file
+      file:
+        path: "{{ environment_file_location }}"
+        state: touch
+    - name: put docker compose file location in environment variable for use with plex_server startup script
+      lineinfile:
+        dest: "{{ environment_file_location }}"
+        state: present
+        line: 'PLEX_DOCKER_COMPOSE_LOC={{ docker_compose_file_location_local }}'
+    - name: put plex claim in environment variable for use with docker-compose
+      lineinfile:
+        dest: "{{ environment_file_location }}"
+        state: present
+        line: 'PLEX_CLAIM={{ plex_claim }}'
+    - name: put NAS mount location in environment variable for use with docker-compose
+      lineinfile:
+        dest: "{{ environment_file_location }}"
+        state: present
+        line: 'NAS_MNT_LOCATION={{ nas_mount_location }}'
+    - name: put plex directory location in environment variable for use with docker-compose
+      lineinfile:
+        dest: "{{ environment_file_location }}"
+        state: present
+        line: 'PLEX_DIRECTORY={{ plex_directory }}'
+    - name: put seedbox download dir mount location in environment variable for use with docker-compose
+      lineinfile:
+        dest: "{{ environment_file_location }}"
+        state: present
+        line: 'SEEDBOX_DOWNLOAD_MOUNT={{ seedbox_download_dir_mount }}'
+    - name: put sonarr directory location in environment variable for use with docker-compose
       lineinfile:
         dest: "{{ environment_file_location }}"
         state: present
         line: 'SONARR_DIRECTORY={{ sonarr_directory }}'
+
 
     # Set up sabnzbd
 #    - name: make sabnzdb group
