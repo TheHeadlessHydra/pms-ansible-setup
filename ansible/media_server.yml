@@ -1,13 +1,16 @@
 ---
-- hosts: all
+- hosts: media_server
   vars:
+    seedbox_ip: 81.4.103.77
+    seedbox_key: /home/headless/.ssh/hydra_seedbox
+    
     nas_name: HeadlessNAS
     nas_mount_location: /mnt/headlessNAS
     plex_directory: /srv/plex
     sabnzbd_directory: /srv/sabnzbd
     sonarr_directory: /srv/sonarr
 
-    docker_compose_file_location_local: "{{ playbook_dir}}/../docker/docker-compose.yml"
+    docker_compose_file_location_local: "{{ playbook_dir}}/../docker/NUC/docker-compose.yml"
 
     # The below environment file location is hardcoded in the systemd script
     environment_file_location: "/etc/environment"
@@ -42,13 +45,40 @@
       apt:
         name: avahi-daemon
         state: present
-
-    # Mount the NAS
-    - name: Mount NAS using 
-      lineinfile:
-        dest: /etc/fstab
+    - name: install sshfs (gives ability to mount remote ip file systems via ssh)
+      apt:
+        name: sshfs
         state: present
-        line: '//{{ nas_name }}.local/Public {{ nas_mount_location }} cifs rw,guest,uid=1000,iocharset=utf8 0 0'
+
+### This does not work. Need a fuse library to get this to work
+#    - name: mount the seedbox downloads dir
+#      mount:
+#        name: /mnt/seedbox/downloads
+#        src: "root@{{ seedbox_ip }}://var/lib/transmission-daemon/downloads"
+#        fstype: fuse.sshfs
+#        opts: 'IdentifyFile={{ seedbox_key }},idmap=user,allow_other,reconnect'
+#        state: mounted
+
+    - name: Mount downloads directory of seedbox via sshfs
+      shell: "sshfs root@{{ seedbox_ip }}:/var/lib/transmission-daemon/downloads /mnt/seedbox/downloads -o reconnect,allow_other,idmap=user,IdentityFile={{ seedbox_key  }}"
+
+    - name: mount the NAS
+      mount:
+        name: "{{ nas_mount_location }}"
+        src: "//{{ nas_name }}.local/Public"
+        fstype: cifs
+        opts: 'rw,guest,uid=1000,iocharset=utf8 0 0'
+        state: mounted
+
+    ### Manual mounting is the old way, use mount above
+    # Mount the NAS
+    #- name: Mount NAS using fstab
+    #  lineinfile:
+    #    dest: /etc/fstab
+    #    state: present
+    #    line: '//{{ nas_name }}.local/Public {{ nas_mount_location }} cifs rw,guest,uid=1000,iocharset=utf8 0 0'
+    #- name: Finalize mount of fstab
+    #  shell: "mount -a"
 
     # Set up required plex
     - name: make plex directory
@@ -112,26 +142,26 @@
         line: 'SONARR_DIRECTORY={{ sonarr_directory }}'
 
     # Set up sabnzbd
-    - name: make sabnzdb group
-      group:
-        name: sabnzbd
-        state: present
-        gid: 666
-    - name: make sabnzdb user
-      user:
-        name: sabnzbd
-        state: present
-        uid: 666
-        group: 666
-    - name: make sab directory
-      file:
-        path: '{{ sabnzbd_directory }}'
-        state: directory
-        owner: 666
-        group: 666
-        mode: 0755
-    - name: put sab directory location in environment variable
-      lineinfile:
-        dest: "{{ environment_file_location }}"
-        state: present
-        line: 'SABNZBD_DIRECTORY={{ sabnzbd_directory }}'
+#    - name: make sabnzdb group
+#      group:
+#        name: sabnzbd
+#        state: present
+#        gid: 666
+#    - name: make sabnzdb user
+#      user:
+#        name: sabnzbd
+#        state: present
+#        uid: 666
+#        group: 666
+#    - name: make sab directory
+#      file:
+#        path: '{{ sabnzbd_directory }}'
+#        state: directory
+#        owner: 666
+#        group: 666
+#        mode: 0755
+#    - name: put sab directory location in environment variable
+#      lineinfile:
+#        dest: "{{ environment_file_location }}"
+#        state: present
+#        line: 'SABNZBD_DIRECTORY={{ sabnzbd_directory }}'

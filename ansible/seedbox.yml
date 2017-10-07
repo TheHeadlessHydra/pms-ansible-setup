@@ -1,0 +1,96 @@
+---
+- hosts: seedbox
+  vars:
+    transmission_location: /srv/transmission
+
+    docker_compose_file_name: "docker-compose.yml"
+    docker_compose_file_location_local: "{{ playbook_dir }}/../docker/SEEDBOX"
+    docker_compose_file_location_remote: "/srv/seedbox"
+
+    # The below environment file location is hardcoded in the systemd script
+    environment_file_location: "/etc/environment"
+
+    startup_script: seedbox
+    startup_script_local_location: "{{ playbook_dir }}/../systemd/{{ startup_script }}"
+    # the below location is hardcoded in the systemd script
+    startup_script_remote_location: "/usr/local/bin/{{ startup_script }}"
+
+    systemd_file_location_local: "{{ playbook_dir }}/../systemd/seedbox.service"
+    systemd_file_location_remote: "/etc/systemd/seedbox.service"
+
+    transmission_settings_local: "{{ playbook_dir }}/../transmission/settings.json"
+    transmission_settings_remote: "/var/lib/transmission-daemon/.config/transmission-daemon/settings.json"
+  
+  tasks:
+    - name: include secrets file
+      include_vars: secrets.yml
+   
+    - name: install docker
+      apt:
+        name: docker
+        state: present
+    - name: install docker-compose
+      apt:
+        name: docker-compose
+        state: present
+    - name: install transmission clie
+      apt:
+        name: transmission-cli
+        state: present
+    - name: install transmission common
+      apt:
+        name: transmission-common
+        state: present
+    - name: install transmission daemon
+      apt:
+        name: transmission-daemon
+        state: present
+
+    # Set up required things for transmission
+    - name: make transmission directory
+      file:
+        path: '{{ transmission_location }}'
+        state: directory
+        mode: 0755
+        owner: root
+        group: root
+    - name: make docker directory (to hold init file)
+      file:
+        path: '{{ docker_compose_file_location_remote }}'
+        state: directory
+        mode: 0755
+        owner: root
+        group: root
+
+    - name: stop transmission daemon
+      service:
+        name: transmission-daemon
+        state: stopped
+    ### Setup transmission settings
+    - name: copy transmission settings file
+      copy:
+        src: "{{ transmission_settings_local }}"
+        dest: "{{ transmission_settings_remote }}"
+        owner: root
+        group: root
+        mode: 0555
+    - name: start transmission daemon
+      service:
+        name: transmission-daemon
+        state: started
+
+    ### Setup env variables
+    - name: create environment variable file
+      file:
+        path: "{{ environment_file_location }}"
+        state: touch
+    - name: put docker compose file location in environment variable for use with seedbox startup script
+      lineinfile:
+        dest: "{{ environment_file_location }}"
+        state: present
+        line: 'DOCKER_COMPOSE_LOC={{ docker_compose_file_location_remote }}/{{ docker_compose_file_name }}'
+    - name: put transmission directory for use with docker-compose
+      lineinfile:
+        dest: "{{ environment_file_location }}"
+        state: present
+        line: 'TRANSMISSION_LOC={{ transmission_location }}'

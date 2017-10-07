@@ -1,0 +1,12 @@
+[Unit]
+Description=Job that runs the seedbox
+
+[Service]
+Type=simple
+Restart=on-failure
+EnvironmentFile=/etc/environment
+ExecStart=/usr/local/bin/seedbox start
+ExecStop=/usr/local/bin/seedbox stop
+
+[Install]
+WantedBy=multi-user.target

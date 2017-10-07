@@ -31,13 +31,4 @@ services:
       - "${SONARR_DIRECTORY}/config:/config"
       - "${PLEX_MNT_LOCATION}/anime:/tv"
       - "${PLEX_MNT_LOCATION}/sonarr/downloads:/downloads"
-
-  sabnzbd:
-    restart: unless-stopped
-    container_name: sabnzbd
-    image: sabnzbd/sabnzbd
-    ports:
-      - "8080:8080"
-    volumes:
-      - "${SABNZBD_DIRECTORY}/datadir:/datadir"
-      - "${SABNZBD_DIRECTORY}/media:/media"
+      
