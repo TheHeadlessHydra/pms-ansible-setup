@@ -11,6 +11,9 @@
     rsync_cron_wrapper_conf_result: ../rsync/rsync-cron-wrapper.conf
     rsync_cron_wrapper_job: ../rsync/rsync-cron-wrapper.pl
     rsync_download_location: /mnt/headlessNAS/downloads
+    rsync_logfile_dir: /var/log/
+    rsync_logfile_name: rsync.log
+    rsync_logfile_out: /var/log/rsync.out
     
     nas_name: HeadlessNAS
     nas_mount_location: /mnt/headlessNAS
@@ -31,6 +34,27 @@
     systemd_file_location_local: "{{ playbook_dir  }}/../systemd/plex_server.service"
     systemd_file_location: "/etc/systemd/system/plex_server.service"
 
+    logrotate_conf_dir: "/etc/logrotate.d/"
+    logrotate_template_file: "../logrotate/logrotate.d.j2"
+    logrotate_scripts:
+    - name: rsync
+      path: "{{rsync_logfile_dir}}{{rsync_logfile_name}}"
+      options:
+        - weekly
+        - size 25M
+        - missingok
+        - compress
+        - delaycompress
+        - copytruncate
+    - name: rsync_out
+      path: "{{rsync_logfile_out}}"
+      options:
+        - weekly
+        - size 25M
+        - missingok
+        - compress
+        - delaycompress
+        - copytruncate
   tasks:
     # include other var files
     - name: include secrets file
@@ -56,6 +80,10 @@
     - name: install sshfs (gives ability to mount remote ip file systems via ssh)
       apt:
         name: sshfs
+        state: present
+    - name: install logrotate
+      apt:
+        name: logrotate
         state: present
 
     - name: make seedbox mount directory
@@ -88,6 +116,9 @@
         seedbox_user_r: "{{ seedbox_user }}"
         seedbox_download_dir_remote_r: "{{ seedbox_download_dir_remote }}"
         rsync_download_location_r: "{{ rsync_download_location }}"
+        logfile_dir: "{{ rsync_logfile_dir }}"
+        logfile_name: "{{ rsync_logfile_name }}"
+        rsync_out: "{{ rsync_logfile_out }}"
 
     - name: set up cron job to sync downloads every minute
       cron:
@@ -162,6 +193,12 @@
         state: present
         line: 'SONARR_DIRECTORY={{ sonarr_directory }}'
 
+    - name: Setup logrotate.d scripts
+      template:
+        src: "{{ logrotate_template_file }}"
+        dest: "{{ logrotate_conf_dir }}{{ item.name }}"
+      with_items: "{{ logrotate_scripts }}"
+      when: logrotate_scripts is defined
 
     # Set up sabnzbd
 #    - name: make sabnzdb group
