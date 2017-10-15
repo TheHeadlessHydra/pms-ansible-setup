@@ -2,6 +2,7 @@
 - hosts: seedbox
   vars:
     transmission_location: /srv/transmission
+    transmission_shared_download_dir: /mnt/seedbox/downloads
 
     docker_compose_file_name: "docker-compose.yml"
     docker_compose_file_location_local: "{{ playbook_dir }}/../docker/SEEDBOX"
@@ -15,24 +16,16 @@
     # the below location is hardcoded in the systemd script
     startup_script_remote_location: "/usr/local/bin/{{ startup_script }}"
 
-    systemd_file_location_local: "{{ playbook_dir }}/../systemd/seedbox.service"
-    systemd_file_location_remote: "/etc/systemd/seedbox.service"
+    systemd_file_location_local: "{{ playbook_dir }}/../systemd/qbittorent-nox.service"
+    systemd_file_location_remote: "/etc/systemd/qbittorent-nox.service"
 
-    transmission_settings_local: "{{ playbook_dir }}/../transmission/settings.json"
+    transmission_settings_local: "{{ playbook_dir }}/../transmission/settings.json.j2"
     transmission_settings_remote: "/var/lib/transmission-daemon/.config/transmission-daemon/settings.json"
   
   tasks:
     - name: include secrets file
       include_vars: secrets.yml
    
-    - name: install docker
-      apt:
-        name: docker
-        state: present
-    - name: install docker-compose
-      apt:
-        name: docker-compose
-        state: present
     - name: install transmission clie
       apt:
         name: transmission-cli
@@ -45,6 +38,34 @@
       apt:
         name: transmission-daemon
         state: present
+    - name: install qbittorent
+      apt:
+        name: qbittorrent
+        state: present
+
+    # set up required things for qbittorent
+    - name: Make sure we have a 'wheel' group
+      group:
+        name: wheel
+        state: present
+    - name: Allow 'wheel' group to have passwordless sudo
+      lineinfile:
+        dest: /etc/sudoers
+        state: present
+        regexp: '^%wheel'
+        line: "%wheel ALL=(ALL) NOPASSWD: ALL"
+    - name: add user qbtuser
+      user:
+        name: qbtuser
+        groups: wheel
+        state: present
+    - name: copy systemd script to systemd location
+      copy:
+        src: "{{ systemd_file_location_local }}"
+        dest: "{{ systemd_file_location_remote }}"
+        owner: root
+        group: root
+        mode: 0555
 
     # Set up required things for transmission
     - name: make transmission directory
@@ -61,6 +82,13 @@
         mode: 0755
         owner: root
         group: root
+    - name: make transmission download directory
+      file:
+        path: '{{ transmission_shared_download_dir }}'
+        state: directory
+        mode: 0775
+        owner: debian-transmission
+        group: debian-transmission
 
     - name: stop transmission daemon
       service:
@@ -68,12 +96,18 @@
         state: stopped
     ### Setup transmission settings
     - name: copy transmission settings file
-      copy:
+      template:
         src: "{{ transmission_settings_local }}"
         dest: "{{ transmission_settings_remote }}"
-        owner: root
-        group: root
-        mode: 0555
+      vars:
+        transmission_password: "{{ transmission_password }}"
+        transmission_download_dir: "{{ transmission_shared_download_dir }}"
+#      copy:
+#        src: "{{ transmission_settings_local }}"
+#        dest: "{{ transmission_settings_remote }}"
+#        owner: root
+#        group: root
+#        mode: 0555
     - name: start transmission daemon
       service:
         name: transmission-daemon

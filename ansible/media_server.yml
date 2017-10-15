@@ -1,10 +1,16 @@
 ---
 - hosts: media_server
   vars:
-    seedbox_ip: 81.4.103.77
+    seedbox_user: headless
+    seedbox_ip: briareus.feralhosting.com
     seedbox_key: /home/headless/.ssh/hydra_seedbox
-    seedbox_download_dir_remote: /var/lib/transmission-daemon/downloads
+    seedbox_download_dir_remote: /media/sdj1/headless/private/transmission/data/
     seedbox_download_dir_mount: /mnt/seedbox/downloads
+
+    rsync_cron_wrapper_conf_template: ../rsync/rsync-cron-wrapper.conf.j2
+    rsync_cron_wrapper_conf_result: ../rsync/rsync-cron-wrapper.conf
+    rsync_cron_wrapper_job: ../rsync/rsync-cron-wrapper.pl
+    rsync_download_location: /mnt/headlessNAS/downloads
     
     nas_name: HeadlessNAS
     nas_mount_location: /mnt/headlessNAS
@@ -52,35 +58,41 @@
         name: sshfs
         state: present
 
-### This does not work. Need a fuse library to get this to work
-#    - name: mount the seedbox downloads dir
-#      mount:
-#        name: /mnt/seedbox/downloads
-#        src: "root@{{ seedbox_ip }}://var/lib/transmission-daemon/downloads"
-#        fstype: fuse.sshfs
-#        opts: 'IdentifyFile={{ seedbox_key }},idmap=user,allow_other,reconnect'
-#        state: mounted
+    - name: make seedbox mount directory
+      file:
+        path: '{{ seedbox_download_dir_mount }}'
+        state: directory
+        mode: 0755
+        owner: root
+        group: 1651
 
-    - name: Mount downloads directory of seedbox via sshfs
-      shell: "sshfs root@{{ seedbox_ip }}:{{ seedbox_download_dir_remote }} {{ seedbox_download_dir_mount }} -o reconnect,allow_other,idmap=user,IdentityFile={{ seedbox_key }}"
+#    - name: Mount downloads directory of seedbox via sshfs
+#      shell: "sshfs {{ seedbox_user }}@{{ seedbox_ip }}:{{ seedbox_download_dir_remote }} {{ seedbox_download_dir_mount }} -o reconnect,big_writes,max_background=100,kernel_cache,auto_cache,no_readahead,large_read,auto_unmount,allow_other,idmap=user,IdentityFile={{ seedbox_key }},cache=yes,compression=no,Ciphers=arcfour"
 
-    - name: mount the NAS
-      mount:
-        name: "{{ nas_mount_location }}"
-        src: "//{{ nas_name }}.local/Public"
-        fstype: cifs
-        opts: 'rw,guest,uid=1000,iocharset=utf8 0 0'
-        state: mounted
+    - name: Mount NAS using fstab
+      lineinfile:
+        dest: /etc/fstab
+        state: present
+        line: '//{{ nas_name }}.local/Public {{ nas_mount_location }} cifs rw,guest,uid=1000,iocharset=utf8 0 0'
+#    - name: Finalize mount of fstab
+#      shell: "mount -a"
 
-    ### Manual mounting is the old way, use mount above
-    # Mount the NAS
-    #- name: Mount NAS using fstab
-    #  lineinfile:
-    #    dest: /etc/fstab
-    #    state: present
-    #    line: '//{{ nas_name }}.local/Public {{ nas_mount_location }} cifs rw,guest,uid=1000,iocharset=utf8 0 0'
-    #- name: Finalize mount of fstab
-    #  shell: "mount -a"
+    #set up requires files for syncing
+    - name: set up required files for syncing
+      template:
+        src: "{{ rsync_cron_wrapper_conf_template }}"
+        dest: "{{ rsync_cron_wrapper_conf_result }}"
+      vars:
+        seedbox_key_r: "{{ seedbox_key }}"
+        seedbox_ip_r: "{{ seedbox_ip }}"
+        seedbox_user_r: "{{ seedbox_user }}"
+        seedbox_download_dir_remote_r: "{{ seedbox_download_dir_remote }}"
+        rsync_download_location_r: "{{ rsync_download_location }}"
+
+    - name: set up cron job to sync downloads every minute
+      cron:
+        name: "SyncRemoteDownloads"
+        job: "{{ playbook_dir }}/{{ rsync_cron_wrapper_job }} -c {{ playbook_dir }}/{{ rsync_cron_wrapper_conf_result }}"
 
     # Set up required plex files and directories
     - name: make plex directory
@@ -143,7 +155,7 @@
       lineinfile:
         dest: "{{ environment_file_location }}"
         state: present
-        line: 'SEEDBOX_DOWNLOAD_MOUNT={{ seedbox_download_dir_mount }}'
+        line: 'SEEDBOX_DOWNLOAD_MOUNT={{ rsync_download_location }}'
     - name: put sonarr directory location in environment variable for use with docker-compose
       lineinfile:
         dest: "{{ environment_file_location }}"

@@ -30,5 +30,5 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - "${SONARR_DIRECTORY}/config:/config"
       - "${NAS_MNT_LOCATION}/anime:/tv"
-      - "${SEEDBOX_DOWNLOAD_MOUNT}:/downloads"
+      - "${SEEDBOX_DOWNLOAD_MOUNT}:/downloads" # since transmission reports back its download dir and sonarr looks for it locally, that means the download dir of transmission and this docker container need to be the same
       

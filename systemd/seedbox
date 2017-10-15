@@ -9,7 +9,7 @@ function start_service {
 }
 
 function stop_service {
-    service transmission-daemon start
+    service transmission-daemon stop
 }
 
 function restart_service {
