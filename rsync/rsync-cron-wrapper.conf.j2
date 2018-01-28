@@ -24,4 +24,4 @@
 ## rsync command
 # Add full command in one line
 # If you do not redirect your output the wrapper will show the rsync output
-[RSYNC_CMD]= rsync --info=progress2 -rlptDvv -e "ssh -i {{ seedbox_key_r }}" {{ seedbox_user_r }}@{{ seedbox_ip_r }}:{{ seedbox_download_dir_remote_r }} {{ rsync_download_location_r }} > {{ rsync_out }} 2>&1
+[RSYNC_CMD]= rsync --info=progress2 --exclude '*part' -urlptDvv -e "ssh -i {{ seedbox_key_r }}" {{ seedbox_user_r }}@{{ seedbox_ip_r }}:{{ seedbox_download_dir_remote_r }} {{ rsync_download_location_r }} > {{ rsync_out }} 2>&1

@@ -1,0 +1,38 @@
+#!/bin/bash
+
+function usage {
+    echo "usage: openvpn-client [start, stop, restart]"
+}
+
+function start_service {
+    service transmission-daemon start
+}
+
+function stop_service {
+    service transmission-daemon stop
+}
+
+function restart_service {
+    service transmission-daemon restart
+}
+
+
+if [ "$#" -ne 1 ]; then
+    usage
+fi
+
+case $1 in
+    start)
+	start_service
+	;;
+    stop)
+	stop_service
+	;;
+    restart)
+	restart_service
+	;;
+    *)
+	# unknown option
+	usage
+	;;
+esac

@@ -14,6 +14,9 @@
     rsync_logfile_dir: /var/log/
     rsync_logfile_name: rsync.log
     rsync_logfile_out: /var/log/rsync.out
+
+    transmission_config_dir: /srv/transmission/config
+    transmission_watch_dir: /mnt/headlessNAS/watch
     
     nas_name: HeadlessNAS
     nas_mount_location: /mnt/headlessNAS
@@ -33,6 +36,9 @@
     
     systemd_file_location_local: "{{ playbook_dir  }}/../systemd/plex_server.service"
     systemd_file_location: "/etc/systemd/system/plex_server.service"
+
+    sonarr_service_location_local: "{{ playbook_dir  }}/../systemd/sonarr.service"
+    sonarr_service_location_remote: "/etc/systemd/system/sonarr.service"
 
     logrotate_conf_dir: "/etc/logrotate.d/"
     logrotate_template_file: "../logrotate/logrotate.d.j2"
@@ -85,6 +91,36 @@
       apt:
         name: logrotate
         state: present
+
+
+    # install sonarr
+    - name: Add sonarr keyserver
+      shell: sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys FDA5DFFC
+    - name: Execute the command in remote shell; stdout goes to the specified file on the remote.
+      shell: echo "deb http://apt.sonarr.tv/ master main" | sudo tee /etc/apt/sources.list.d/sonarr.list
+    - name: install libcurl for sonarr to connect over https
+      apt:
+        name: libcurl3
+        state: present
+    - name: install sonarr
+      apt:
+        name: nzbdrone
+        state: present
+    - name: make sonarr directory
+      file:
+        path: '{{ sonarr_directory }}'
+        state: directory
+        mode: 666
+        owner: root
+        group: root
+    - name: copy systemd script to systemd location
+      copy:
+        src: "{{ sonarr_service_location_local }}"
+        dest: "{{ sonarr_service_location_remote }}"
+        owner: root
+        group: root
+        mode: 0555
+
 
     - name: make seedbox mount directory
       file:
@@ -148,14 +184,14 @@
         group: root
         mode: 0555
 
-    # Set up sonarr
-    - name: make sonarr directory
+
+    - name: make seedbox mount directory
       file:
-        path: '{{ sonarr_directory }}'
+        path: '{{ transmission_config_dir }}'
         state: directory
-        mode: 666
+        mode: 0755
         owner: root
-        group: root
+        group: 1651
 
     ### Set up environment variables
     - name: create environment variable file
@@ -192,6 +228,16 @@
         dest: "{{ environment_file_location }}"
         state: present
         line: 'SONARR_DIRECTORY={{ sonarr_directory }}'
+    - name: put transmission config dir in environment variable for use with docker-compose
+      lineinfile:
+        dest: "{{ environment_file_location }}"
+        state: present
+        line: 'TRANSMISSION_CONFIG_DIR={{ transmission_config_dir }}'
+    - name: put transmission watch dir in environment variable for use with docker-compose
+      lineinfile:
+        dest: "{{ environment_file_location }}"
+        state: present
+        line: 'TRANSMISSION_WATCH_DIR={{ transmission_watch_dir }}'
 
     - name: Setup logrotate.d scripts
       template:

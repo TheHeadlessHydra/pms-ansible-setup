@@ -15,20 +15,38 @@ services:
       - "${PLEX_DIRECTORY}/data:/data"
       - "${NAS_MNT_LOCATION}:${NAS_MNT_LOCATION}"
 
-  sonarr:
-    restart: unless-stopped
-    privileged: true
-    container_name: sonarr
-    image: linuxserver/sonarr
-    environment:
-      - TZ=US
-      - PGID=0
-      - PUID=0
-    ports:
-      - "8989:8989"
-    volumes:
-      - /etc/localtime:/etc/localtime:ro
-      - "${SONARR_DIRECTORY}/config:/config"
-      - "${NAS_MNT_LOCATION}/anime:/tv"
-      - "${SEEDBOX_DOWNLOAD_MOUNT}:/downloads" # since transmission reports back its download dir and sonarr looks for it locally, that means the download dir of transmission and this docker container need to be the same
+#  sonarr:
+#    restart: unless-stopped
+#    privileged: true
+#    container_name: sonarr
+#    image: linuxserver/sonarr
+#    environment:
+#      - TZ=US
+#      - PGID=0
+#      - PUID=0
+#    ports:
+#      - "8989:8989"
+#    volumes:
+#      - /etc/localtime:/etc/localtime:ro
+#      - "${SONARR_DIRECTORY}/config:/config"
+#      - "${NAS_MNT_LOCATION}/anime:/tv"
+#      - "${SEEDBOX_DOWNLOAD_MOUNT}:/downloads" # since transmission reports back its download dir and sonarr looks for it locally, that means the download dir of transmission and this docker container need to be the same
+
+#  transmission:
+#    restart: unless-stopped
+#    privileged: true
+#    container_name: transmission
+#    image: linuxserver/transmission
+#    environment:
+#      - TZ=US
+#      - PGID=0
+#      - PUID=0
+#    ports:
+#      - "9091:9091"
+#      - "51413:51413"
+#      - "51413:51413/udp"
+#    volumes:
+#      - "${SEEDBOX_DOWNLOAD_MOUNT}:/downloads"
+#      - "${TRANSMISSION_CONFIG_DIR}:/config"
+#      - "${TRANSMISSION_WATCH_DIR}:/watch"
       
